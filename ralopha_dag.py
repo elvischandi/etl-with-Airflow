@@ -14,26 +14,21 @@ import psycopg2
 postgres_conn_id = 'postgres_'
 
 # Excel file paths
-rent_collection_excel_path = os.path.join(os.path.dirname(__file__), 'data', 'rent_details.xlsx')
-expenses_excel_path = os.path.join(os.path.dirname(__file__), 'data', 'expenses.xlsx')
+rent_collection_excel_path = '/home/elvis_chandi/OneDrive/OneDrive/rent_details.xlsx'
+expenses_excel_path = '/home/elvis_chandi/OneDrive/OneDrive/expenses.xlsx'
 logs_file_path = os.path.join(os.path.dirname(__file__),"logs")
 
 def logger_func(log_file):
 
-    # Configure logging to create a logger instance
     logger = logging.getLogger('ralopha_logger')
     logger.setLevel(logging.INFO)  
-# Create a console handler and set the log level for it
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)  
-# Create a file handler and set the log level for it
     file_handler = logging.FileHandler(log_file)  
     file_handler.setLevel(logging.INFO)
-# Create a formatter and attach it to the handlers
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     console_handler.setFormatter(formatter)
     file_handler.setFormatter(formatter)
-# Attach the handlers to the logger
     logger.addHandler(console_handler)
     logger.addHandler(file_handler)
     return logger
@@ -81,7 +76,7 @@ with DAG(
                 date_received DATE,
                 house_no VARCHAR(255),
                 tenant_name VARCHAR(255),
-                tenant_phone INT,
+                tenant_phone VARCHAR(255),
                 house_rent INT,
                 rent_amount_paid INT,
                 water_amount_paid INT,
