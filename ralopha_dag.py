@@ -16,8 +16,8 @@ from datetime import timedelta
 postgres_conn_id = 'postgres_conn'
 
 # Excel file paths
-rent_collection_excel_path = '/home/chandi/Ralopha/datasets/rent_details.ods'
-expenses_excel_path = '/home/chandi/Ralopha/datasets/expenses.ods'
+rent_collection_excel_path = '/home/chandi/OneDrive/rent_details.xlsx'
+expenses_excel_path = '/home/chandi/OneDrive/expenses.xlsx'
 logs_file_path = os.path.join(os.path.dirname(__file__),"logs")
 
 def logger_func(log_file):
