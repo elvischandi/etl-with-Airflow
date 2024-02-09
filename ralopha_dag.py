@@ -7,15 +7,17 @@ from airflow.utils.dates import days_ago
 import os
 import logging
 import psycopg2
+from datetime import timedelta
+
 
 
 
 # Define your PostgreSQL connection ID from Airflow UI
-postgres_conn_id = 'postgres_'
+postgres_conn_id = 'postgres_conn'
 
 # Excel file paths
-rent_collection_excel_path = '/home/elvis_chandi/OneDrive/OneDrive/rent_details.xlsx'
-expenses_excel_path = '/home/elvis_chandi/OneDrive/OneDrive/expenses.xlsx'
+rent_collection_excel_path = '/home/chandi/Ralopha/datasets/rent_details.ods'
+expenses_excel_path = '/home/chandi/Ralopha/datasets/expenses.ods'
 logs_file_path = os.path.join(os.path.dirname(__file__),"logs")
 
 def logger_func(log_file):
@@ -53,7 +55,7 @@ default_args = {
 with DAG(
     'excel_to_postgres_etl',
     default_args=default_args,
-    schedule_interval=None,  # Set your desired schedule interval
+    # schedule_interval= timedelta(minutes=3),  # Set your desired schedule interval
     catchup=False,
 ) as dag:
     
@@ -73,6 +75,8 @@ with DAG(
     def rent_table():
         create_table_sql = """
             CREATE TABLE IF NOT EXISTS rent_collections (
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                id INT,
                 date_received DATE,
                 house_no VARCHAR(255),
                 tenant_name VARCHAR(255),
@@ -82,23 +86,29 @@ with DAG(
                 water_amount_paid INT,
                 garbage_amount_paid INT,
                 expenses_on_tenant INT,
-                total_amount_paid INT
+                total_amount_paid INT,
+                CONSTRAINT primary_key_constraint UNIQUE (id)
             );
             """
         Postgres_hook = PostgresHook(postgres_conn_id = postgres_conn_id)
         Postgres_hook.run(sql=create_table_sql)
         
     get_rent_data = PythonOperator(
-    task_id="get_rent",python_callable=rent_table,dag=dag,
+    task_id="get_rent",
+    python_callable=rent_table,
+    dag=dag,
     )
     
     def expenses_table():
         create_expenses_sql = """
             CREATE TABLE IF NOT EXISTS expenses (
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                table_id INT,
                 date DATE,
                 expense_category VARCHAR(255),
                 expense_label VARCHAR(255),
-                amount INT    
+                Amount INT,
+                CONSTRAINT primary_key_constraint2 UNIQUE (table_id)
             );
             """
         Postgres_hook = PostgresHook(postgres_conn_id = postgres_conn_id)
@@ -109,7 +119,7 @@ with DAG(
     )
     
     # Task 3: Load data into PostgreSQL tables
-    def load_rent_data():
+    def load_rent_data(handle_duplicates=True):
         df = extract_excel_data(rent_collection_excel_path)
         hook = PostgresHook(postgres_conn_id = postgres_conn_id)
         conn = hook.get_conn()
@@ -118,6 +128,7 @@ with DAG(
             try:
                 cur.execute("""
                 INSERT INTO rent_collections (
+                    id,        
                     date_received,
                     house_no,
                     tenant_name,
@@ -129,10 +140,23 @@ with DAG(
                     expenses_on_tenant,
                     total_amount_paid
                 )
-                VALUES (%s::date,%s,%s,%s::integer,%s::integer,%s::integer,%s::integer,%s::integer,%s::integer,%s::integer);
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (id) DO UPDATE 
+                SET
+                    id = EXCLUDED.id,
+                    date_received = EXCLUDED.date_received,
+                    house_no = EXCLUDED.house_no,
+                    tenant_name = EXCLUDED.tenant_name,
+                    tenant_phone = EXCLUDED.tenant_phone,
+                    house_rent = EXCLUDED.house_rent,
+                    rent_amount_paid = EXCLUDED.rent_amount_paid,
+                    water_amount_paid = EXCLUDED.water_amount_paid,
+                    garbage_amount_paid = EXCLUDED.garbage_amount_paid,
+                    expenses_on_tenant = EXCLUDED.expenses_on_tenant,
+                    total_amount_paid = EXCLUDED.total_amount_paid;
                 """,
             (
-            row['date_received'], row['house_no'], row['tenant_name'], row['tenant_phone'],
+            row['id'],row['date_received'], row['house_no'], row['tenant_name'], row['tenant_phone'],
             row['house_rent'], row['rent_amount_paid'], row['water_amount_paid'],
             row['garbage_amount_paid'], row['expenses_on_tenant'], row['total_amount_paid']
             )
@@ -143,10 +167,13 @@ with DAG(
 
         
     load_rent = PythonOperator(
-    task_id="load_rent",python_callable=load_rent_data,dag=dag,
+    task_id="load_rent",
+    python_callable=load_rent_data,
+    op_args=[True],  # Set to False if you want to ignore duplicates
+    dag=dag,
     )
     
-    def load_expense_data():
+    def load_expense_data(handle_duplicates=True):
         df = extract_excel_data(expenses_excel_path)
         hook = PostgresHook(postgres_conn_id = postgres_conn_id)
         conn = hook.get_conn()
@@ -155,15 +182,23 @@ with DAG(
             try:
                 cur.execute("""
                 INSERT INTO expenses (
+                            table_id,
                             date,
                             expense_category, 
                             expense_label,
-                            amount
+                            Amount
                 )
-                VALUES (%s::date,%s,%s,%s::integer);
+                VALUES (%s,%s,%s,%s,%s)
+                ON CONFLICT (table_id) DO UPDATE 
+                SET
+                    table_id = EXCLUDED.table_id,
+                    date = EXCLUDED.date,
+                    expense_category = EXCLUDED.expense_category,
+                    expense_label = EXCLUDED.expense_label,
+                    Amount = EXCLUDED.Amount;
                 """,
             (
-            row['date'], row['expense_category'], row['expense_label'], row['amount']
+            row['table_id'], row['date'], row['expense_category'], row['expense_label'], row['Amount']
             )
                 )
                 conn.commit()
@@ -171,7 +206,10 @@ with DAG(
                 my_logger.error(f"Error while inserting row {index}: {str(e)}")
         
     load_expenses = PythonOperator(
-    task_id="load_expenses",python_callable=load_expense_data,dag=dag,
+    task_id="load_expenses",
+    python_callable=load_expense_data,
+    op_args=[True],  # Set to False if you want to ignore duplicates
+    dag=dag,
     )
     
     # Define task dependencies
