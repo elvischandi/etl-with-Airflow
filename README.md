@@ -1,7 +1,7 @@
-Excel to PostgreSQL ETL with Apache Airflow
+# Excel to PostgreSQL ETL with Apache Airflow
 This Apache Airflow DAG (Directed Acyclic Graph) is designed to perform an ETL process, extracting data from Excel files and loading it into PostgreSQL tables.
 
-Overview
+# Overview
 The ETL process consists of the following tasks:
 
 Task 1: Extract data from Rent Collection Excel file.
@@ -9,7 +9,7 @@ Task 2: Extract data from Expenses Excel file.
 Task 3: Create Rent Collections and Expenses tables if they don't exist.
 Task 4: Load Rent Collection data into the PostgreSQL database.
 Task 5: Load Expenses data into the PostgreSQL database.
-Prerequisites
+# Prerequisites
 Before executing the DAG, ensure the following:
 
 PostgreSQL connection is set up in Airflow UI with the ID specified in the script (postgres_conn_id).
@@ -22,7 +22,7 @@ datasets/: Directory containing Excel files.
 Logging
 Logs are generated during the ETL process and stored in the logs/ directory. The log file (ralopha_logs.log) provides insights into task execution and any encountered errors.
 
-Usage
+# Usage
 Copy the excel_to_postgres_etl.py script to your Airflow DAGs directory.
 Ensure the required Python packages (pandas, psycopg2, etc.) are installed in your Airflow environment.
 Configure the PostgreSQL connection in the Airflow UI.
@@ -34,6 +34,6 @@ Set the desired schedule interval in the DAG constructor (currently commented ou
 Error Handling
 The script includes error handling mechanisms to capture and log any issues during data extraction, table creation, and data loading into PostgreSQL.
 
-Notes
+# Notes
 The DAG is set to run daily (start_date and schedule_interval can be adjusted).
 Tables are created if they don't exist, ensuring a dynamic and flexible ETL process.
